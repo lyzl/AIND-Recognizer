@@ -16,7 +16,7 @@ class ModelSelector(object):
     def __init__(self, all_word_sequences: dict, all_word_Xlengths: dict, this_word: str,
                  n_constant=3,
                  min_n_components=2, max_n_components=10,
-                 random_state=14, verbose=False):
+                 random_state=14, verbose=True):
         self.words = all_word_sequences
         self.hwords = all_word_Xlengths
         self.sequences = all_word_sequences[this_word]
@@ -37,7 +37,7 @@ class ModelSelector(object):
         # warnings.filterwarnings("ignore", category=RuntimeWarning)
         try:
             hmm_model = GaussianHMM(n_components=num_states, covariance_type="diag", n_iter=1000,
-                                    random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+                                    random_state=self.random_state, verbose=True).fit(self.X, self.lengths)
             if self.verbose:
                 print("model created for {} with {} states".format(self.this_word, num_states))
             return hmm_model
@@ -77,7 +77,23 @@ class SelectorBIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        #L: likelihood of the fitted model
+        #p: number of parameters,
+        #N: number of data points.
+        for n in range(self.min_n_components, max_n_components + 1)
+            try:
+                hmm_model = self.base_model(n)
+                # score has already logged
+                logL = hmm_model.score(self.X, self.lengths)
+                BIC_result = -2 * logL + p * logN
+            if self.verbose:
+                print("model created for {} with {} states".format(self.this_word, n))
+            return hmm_model
+        except:
+            if self.verbose:
+                print("failure on {} with {} states".format(self.this_word, n))
+            pass
+        return self.
 
 
 class SelectorDIC(ModelSelector):
