@@ -16,7 +16,7 @@ class ModelSelector(object):
     def __init__(self, all_word_sequences: dict, all_word_Xlengths: dict, this_word: str,
                  n_constant=3,
                  min_n_components=2, max_n_components=10,
-                 random_state=14, verbose=True):
+                 random_state=14, verbose=False):
         self.words = all_word_sequences
         self.hwords = all_word_Xlengths
         self.sequences = all_word_sequences[this_word]
@@ -37,7 +37,7 @@ class ModelSelector(object):
         # warnings.filterwarnings("ignore", category=RuntimeWarning)
         try:
             hmm_model = GaussianHMM(n_components=num_states, covariance_type="diag", n_iter=1000,
-                                    random_state=self.random_state, verbose=True).fit(self.X, self.lengths)
+                                    random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
             if self.verbose:
                 print("model created for {} with {} states".format(self.this_word, num_states))
             return hmm_model
@@ -80,20 +80,30 @@ class SelectorBIC(ModelSelector):
         #L: likelihood of the fitted model
         #p: number of parameters,
         #N: number of data points.
-        for n in range(self.min_n_components, max_n_components + 1)
+        best_score = float("inf")
+        best_num_components = None
+        # print(self.X)
+        # print(self.lengths)
+        # print(self.sequences)
+        for n in range(self.min_n_components, self.max_n_components + 1):
             try:
                 hmm_model = self.base_model(n)
                 # score has already logged
                 logL = hmm_model.score(self.X, self.lengths)
-                BIC_result = -2 * logL + p * logN
-            if self.verbose:
-                print("model created for {} with {} states".format(self.this_word, n))
-            return hmm_model
-        except:
-            if self.verbose:
-                print("failure on {} with {} states".format(self.this_word, n))
-            pass
-        return self.
+                logN = math.log(len(self.X))
+                p = n * n + 2 * n * len(self.X[0]) - 1
+                BIC_result = (-2) * logL - p * logN
+                
+                if BIC_result < best_score:
+                    best_score = BIC_result
+                    best_num_components = n
+                if self.verbose:
+                    print("BIC score:{}".format(BIC_result))
+            except:
+                if self.verbose:
+                    print("failure in selector BIC.The error is:{}".format(sys.exc_info()[0]))
+                pass
+        return self.base_model(best_num_components)
 
 
 class SelectorDIC(ModelSelector):
@@ -105,12 +115,45 @@ class SelectorDIC(ModelSelector):
     https://pdfs.semanticscholar.org/ed3d/7c4a5f607201f3848d4c02dd9ba17c791fc2.pdf
     DIC = log(P(X(i)) - 1/(M-1)SUM(log(P(X(all but i))
     '''
-
+    # from IPython.core.debugger import set_trace
+    # set_trace()
     def select(self):
-        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        # warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        score_list = []
+        best_score = float("inf")
+        best_num_components = 2
+        M = len(self.words)
+        for n in range(self.min_n_components, self.max_n_components + 1):
+            try:
+                hmm_model = self.base_model(n)
+                log_prob_xi = hmm_model.score(self.X, self.lengths)
+                
+                # print(log_prob_xi)
+                score_list.append(log_prob_xi) 
+                # print(score_dict.items())
+            except:
+                score_list.append(None)
+                if self.verbose:
+                    print("failure in selector DIC.The error is:{}".format(sys.exc_info()))
+                pass
+        print(score_list)
+        for n in range(0, self.max_n_components - self.min_n_components):
+            if score_list[n] != None:
+                log_prob_xi = score_list[n]
+                log_prob_but_i = sum([score_list[m] for m in range(0, self.max_n_components - self.min_n_components + 1) if ((score_list[m] != None) and (m != n))])
+                DIC_result = log_prob_xi - (1 / (M - 1) *log_prob_but_i)
+
+                if DIC_result < best_score:
+                    best_score = DIC_result
+                    best_num_components = n + self.min_n_components
+        if self.verbose:
+            print("DIC score:{}".format(DIC_result))
+        return self.base_model(best_num_components)
+        # return None
+
+        
 
 
 class SelectorCV(ModelSelector):
