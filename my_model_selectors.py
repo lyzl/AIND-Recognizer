@@ -123,7 +123,7 @@ class SelectorDIC(ModelSelector):
         # TODO implement model selection based on DIC scores
         score_list = []
         best_score = float("inf")
-        best_num_components = 2
+        best_num_components = None
         M = len(self.words)
         for n in range(self.min_n_components, self.max_n_components + 1):
             try:
@@ -138,7 +138,7 @@ class SelectorDIC(ModelSelector):
                 if self.verbose:
                     print("failure in selector DIC.The error is:{}".format(sys.exc_info()))
                 pass
-        print(score_list)
+
         for n in range(0, self.max_n_components - self.min_n_components):
             if score_list[n] != None:
                 log_prob_xi = score_list[n]
@@ -165,4 +165,32 @@ class SelectorCV(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection using CV
-        raise NotImplementedError
+        best_score = float("inf")
+        best_num_components = None
+        for n in range(self.min_n_components, self.max_n_components + 1):
+            try:
+                hmm_model = self.base_model(n)
+                score_list = []
+                n_splits = min(3,len(self.sequences))
+                KFold_split = KFold(n_splits = n_splits, random_state = self.random_state)
+                for train_idx, test_idx in KFold_split.split(self.sequences):
+                    train_X, train_length = combine_sequences(train_idx, self.sequences)
+                    test_X, test_Length = combine_sequences(test_idx, self.sequences)
+                    hmm_model.fit(train_X, train_length)
+                    splited_score = hmm_model.score(test_X, test_Length)
+                    score_list.append(splited_score)
+
+                average_score = sum(score_list)/len(score_list)
+                    
+                if average_score < best_score :
+                    best_score = average_score
+                    best_num_components = n
+            except:
+                if self.verbose:
+                    print("failure in selector CV.The error is:{}".format(sys.exc_info()[0]))
+                pass
+        if self.verbose:
+            print("CV score:{}".format(DIC_result))
+        return self.base_model(best_num_components)
+
+                        
