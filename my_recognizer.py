@@ -22,21 +22,19 @@ def recognize(models: dict, test_set: SinglesData):
     guesses = []
     # TODO implement the recognizer
     # return probabilities, guesses
-    valid_model = {descript:model for descript,model in models.items() if model != None}
+    valid_models = {descript:model for descript,model in models.items() if model != None}
 
-    for descript, model in valid_models.items():
-      try:
-       probabilities
+    probabilities = [get_word_probs(valid_models, *test_set.get_item_Xlengths(i)) for i,_ in enumerate(test_set.wordlist)]
+    guesses = [max(word_probs.keys(), key=lambda word: word_probs[word]) for word_probs in probabilities]
 
+    return probabilities, guesses
 
-    return model_dict
-
-    def get_word_probs(models, X, lengths):
-      probs = {}
-      for descript, model in valid_models.items():
-        try:
-          probs[descript] = model.score(x, lengths)
-        except:
-          probs[descript] = float("-inf")
-      return probs
+def get_word_probs(models, X, lengths):
+  probs = {}
+  for descript, model in models.items():
+    try:
+      probs[descript] = model.score(X, lengths)
+    except:
+      probs[descript] = float("-inf")
+  return probs
 
